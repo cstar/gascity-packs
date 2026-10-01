@@ -4,6 +4,9 @@
 # Called by tmux every status-interval seconds via #(command).
 # Always exits 0 — tmux must never see errors.
 #
+# Passive by default: rendering a terminal must not run work discovery.
+# Set GC_STATUSLINE_LIVE_COUNTS=1 to opt in to bounded live counts.
+# Opt-in counts require the timeout command; without it queries are skipped.
 # Counts are cached with a short TTL so tmux's frequent refresh does not query
 # Beads on every render across every agent. TTL override:
 # GC_STATUSLINE_TTL (seconds). Cache directory override:
@@ -13,6 +16,11 @@ agent="$1"
 city="${2:-${GC_CITY:-${GT_ROOT:-${GC_DIR:-}}}}"
 [ -z "$agent" ] && exit 0
 
+if [ "${GC_STATUSLINE_LIVE_COUNTS:-0}" != 1 ]; then
+    printf '%s' "$agent"
+    exit 0
+fi
+
 if [ -n "$city" ] && [ -d "$city" ]; then
     cd "$city" 2>/dev/null || true
 fi
@@ -21,7 +29,8 @@ run_bounded() {
     if command -v timeout >/dev/null 2>&1; then
         timeout 2s "$@"
     else
-        "$@"
+        # Never turn a decorative render into unbounded store discovery.
+        return 124
     fi
 }
 

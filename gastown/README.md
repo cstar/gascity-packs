@@ -45,3 +45,5 @@ Gastown deliberately does not ship retired dog formulas for JSONL export or
 stale-session reaping. The Gas City builtin core pack provides JSONL export,
 stale-session and stale-data cleanup, and Dolt housekeeping as deterministic
 exec orders.
+
+The tmux status line is passive by default: it shows the agent label without querying work or mail. Set `GC_STATUSLINE_LIVE_COUNTS=1` in the status helper environment to opt in to cached counts. Live counts require `timeout`; without it, the helper keeps the label and skips queries. Use `gc hook` and `gc mail check` explicitly when you need current counts.

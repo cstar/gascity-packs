@@ -205,6 +205,37 @@ SH
         fail "tmux-theme did not quote and pass city path to status-line"
 }
 
+test_status_line_is_passive_by_default() {
+    local tmp output
+    tmp=$(mktemp -d)
+    mkdir -p "$tmp/city-a"
+    write_count_stubs "$tmp/bin"
+    output=$(env -u GC_STATUSLINE_LIVE_COUNTS GC_LOG="$tmp/calls" GC_STATUSLINE_CACHE_DIR="$tmp/cache" PATH="$tmp/bin:$PATH" "$SCRIPTS/status-line.sh" alpha "$tmp/city-a")
+    [[ "$output" == "alpha" ]] || fail "default render must be passive, got: $output"
+    [[ ! -e "$tmp/calls" ]] || fail "default render invoked gc"
+    [[ ! -e "$tmp/cache" ]] || fail "default render created polling cache"
+    rm -rf "$tmp"
+}
+
+test_live_counts_skip_queries_without_timeout() {
+    local tmp tool output
+    tmp=$(mktemp -d)
+    mkdir -p "$tmp/bin" "$tmp/city-a"
+    write_count_stubs "$tmp/bin"
+    rm -f "$tmp/bin/timeout"
+    # A controlled PATH proves the bound cannot accidentally come from the host.
+    for tool in date stat id tr cksum awk mkdir chmod jq sh; do
+        ln -s "$(command -v "$tool")" "$tmp/bin/$tool"
+    done
+    output=$(GC_STATUSLINE_LIVE_COUNTS=1 GC_LOG="$tmp/calls" GC_STATUSLINE_CACHE_DIR="$tmp/cache" PATH="$tmp/bin" "$SCRIPTS/status-line.sh" alpha "$tmp/city-a")
+    [[ "$output" == "alpha" ]] || fail "missing timeout must omit counts"
+    [[ ! -e "$tmp/calls" ]] || fail "queries ran without a duration bound"
+    rm -rf "$tmp"
+}
+
+test_status_line_is_passive_by_default
+export GC_STATUSLINE_LIVE_COUNTS=1
+test_live_counts_skip_queries_without_timeout
 test_status_line_counts_with_bounded_gc_commands_and_cache
 test_status_line_cache_is_city_scoped
 test_status_line_falls_back_to_agent_only_on_query_failure
